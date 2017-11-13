@@ -12,7 +12,7 @@ The second arguement is an output filename
 alut.h library deprecated in macOS: but you can use freealut.  
 
 In Terminal  
->> brew install freealut  
+\>\> brew install freealut  
   
 Don't forget to add the AL folder in the header search path  
   
