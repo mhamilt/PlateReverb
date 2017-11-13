@@ -7,7 +7,11 @@ All code tested with Xcode Version 8.2.1 (8C1002)
 Values inbetween the Edit Here banners can be changed.  
   
 If running executable from command line, the first arguement is the input filename.  
-The second arguement is an output filename
+The second arguement is an output filename  
+  
+e.g.  
+  
+\>\> ./PlateVerb input.wav output.wav  
   
 alut.h library deprecated in macOS: but you can use freealut.  
 
