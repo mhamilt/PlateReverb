@@ -1,105 +1,165 @@
-/*
-  ==============================================================================
+//
+//  PLATE REVERB
+//
+//
+//  Created by mhamilt on 20/10/2017.
+//  Copyright © 2017 mhamilt. All rights reserved.
+//
+//	Use Plate Class as a plate reverb unit
 
-    This file was auto-generated!
+#include <iostream>
+#include <cstring>
+#include "PlateClass.cpp"
+#include "AudioOut.h"	 // For .wav header, write and playback
 
-    It contains the basic startup code for a Juce application.
+int main (int argc, const char *argv[]) {
 
-  ==============================================================================
-*/
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Parameters
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// START EDIT HERE
 
-#include "../JuceLibraryCode/JuceHeader.h"
-#include "MainComponent.cpp"
+	// High and low Frequency Loss
+	// High freqeuncy in range  0 < x < 1
+	const double lt60 = 8; const double ht60 = .1;
 
-//Component* createMainContentComponent();
+	// Set to 0 for Command Line Build
+	// Or set 1 and change default file names below.
+	const int fndebug = 1;
 
-//==============================================================================
-class PlateVerbAppApplication  : public JUCEApplication
-{
-public:
-    //==============================================================================
-    PlateVerbAppApplication() {}
+	char definfile[] = "/Users/admin/Documents/Masters/PBMMI/Audio_Examples/AfricanDrumming.wav";
+	char defoutfile[] = "/Users/admin/Downloads/PlateReverb.wav";
 
-    const String getApplicationName() override       { return ProjectInfo::projectName; }
-    const String getApplicationVersion() override    { return ProjectInfo::versionString; }
-    bool moreThanOneInstanceAllowed() override       { return true; }
+	// STOP EDIT HERE
 
-    //==============================================================================
-    void initialise (const String& commandLine) override
-    {
-        // This method is where you should put your application's initialisation code..
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Input
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        mainWindow = new MainWindow (getApplicationName());
-    }
+	int inNf; int SR; int filenamelength;
+	char *inputfname;
 
-    void shutdown() override
-    {
-        // Add your application's shutdown code here..
+	switch (fndebug) { //This is just to allow debuggging of for arguements via command line
 
-        mainWindow = nullptr; // (deletes our window)
-    }
+  case 0:	//CommandLine
 
-    //==============================================================================
-    void systemRequestedQuit() override
-    {
-        // This is called when the app is being asked to quit: you can ignore this
-        // request and let the app carry on running, or call quit() to allow the app to close.
-        quit();
-    }
+			if(!argv[1]){
+				printf("NO FILE DETECTED\n");
+				return -1;
+			}
 
-    void anotherInstanceStarted (const String& commandLine) override
-    {
-        // When another instance of the app is launched while this one is running,
-        // this method is invoked, and the commandLine parameter tells you what
-        // the other instance's command-line arguments were.
-    }
+			filenamelength = int(strlen(argv[1]));
+			inputfname = new char[filenamelength+1]();
+			strncpy(inputfname, argv[1], filenamelength);
+			break;
 
-    //==============================================================================
-    /*
-        This class implements the desktop window that contains an instance of
-        our MainContentComponent class.
-    */
-    class MainWindow    : public DocumentWindow
-    {
-    public:
-        MainWindow (String name)  : DocumentWindow (name,
-                                                    Desktop::getInstance().getDefaultLookAndFeel()
-                                                                          .findColour (ResizableWindow::backgroundColourId),
-                                                    DocumentWindow::allButtons)
-        {
-            setUsingNativeTitleBar (true);
-//            setContentOwned (createMainContentComponent(), true);
+  case 1:	// debug
+			inputfname = definfile;
+			break;
 
-			setContentOwned (new MainContentComponent(), true);
-            setResizable (true, true);
+  default:  inputfname = definfile;
+	}
 
-            centreWithSize (getWidth(), getHeight());
-            setVisible (true);
-        }
+	double *inwav = readWav(inputfname, &inNf, &SR);
+	printWavHeader(inputfname);
 
-        void closeButtonPressed() override
-        {
-            // This is called when the user tries to close this window. Here, we'll just
-            // ask the app to quit when this happens, but you can change this to do
-            // whatever you need.
-            JUCEApplication::getInstance()->systemRequestedQuit();
-        }
+	if(!inwav){
+		printf("NO FILE DETECTED\n");
+		return -1;
+	}
 
-        /* Note: Be careful if you override any DocumentWindow methods - the base
-           class uses a lot of them, so by overriding you might break its functionality.
-           It's best to do all your work in your content component instead, but if
-           you really have to override any DocumentWindow methods, make sure your
-           subclass also calls the superclass's method.
-        */
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\\
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\\
 
-    private:
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
-    };
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Set Output File Name
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	int Nf = int(lt60*ht60) + inNf;
+	double *out;
+	out = new double[Nf];
+	char *outputfname;
 
-private:
-    ScopedPointer<MainWindow> mainWindow;
-};
 
-//==============================================================================
-// This macro generates the main() routine that launches the app.
-START_JUCE_APPLICATION (PlateVerbAppApplication)
+	switch (fndebug) {
+
+  case 0:	//CommandLine
+			if(!argv[2]){
+				const char *homedir = getenv("HOME");
+				if(!homedir){
+					printf("Couldn't find Home Directory. Enter a filename\n");
+					return 1;
+				}
+				printf("NO FILE NAME ENTERED\nUSING DEFAULT FILE DESTINATION\n");
+				const char *def_fname = "/Downloads/PlateReverb.wav";
+				filenamelength = int(strlen(homedir)) + int(strlen(def_fname));
+				outputfname = new char[filenamelength+1]();
+				strncpy(outputfname,homedir, int(strlen(homedir)));
+				strcat(outputfname, def_fname);
+			}
+			else{
+				filenamelength = int(strlen(argv[2]));
+				outputfname = new char[filenamelength+1]();
+				strncpy(outputfname, argv[2], filenamelength);
+			}
+			break;
+
+
+  case 1:	// debug
+			outputfname = defoutfile;
+			break;
+
+  default: outputfname = defoutfile;
+	}
+
+
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Plate Setup
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	FD_Plate PlateTest;
+
+	//input is SR, and boundary condition type
+	PlateTest.Setup(SR,1);
+
+	PlateTest.setLoss(lt60,ht60);
+
+	//	Print info
+	PlateTest.printCoefs();
+	PlateTest.printInfo();
+
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Process Loop
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// This is where the magic happens
+	//	PlateTest.setInitialCondition();
+
+	// START CLOCK
+	std::clock_t start;
+	double duration;
+	start = std::clock();
+
+	int n;
+
+	for(n=0;n<Nf;n++){
+		PlateTest.UpdateScheme();
+		if(n<inNf){
+			PlateTest.addForce(inwav[n]);
+		}
+		out[n] = PlateTest.getOutput(1);
+	}
+
+	duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+	std::cout<<"Time Elapsed (seconds): "<< duration <<'\n';
+
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Output
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	writeWavMS(out, outputfname, Nf, SR);
+	delete out;
+	playWavMS(outputfname);
+	printf("\nComplete...\n");
+
+	std::cout << "SUCCESS" << '\n';
+	return 0;
+
+}
